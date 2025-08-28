@@ -2,16 +2,19 @@
 
 import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useCallback } from 'react';
-import type { Project, Task, TaskStatus } from '@/lib/types';
-import { projects as initialProjects, tasks as initialTasks } from '@/lib/data';
+import type { Project, Task, TaskStatus, User, UserRole } from '@/lib/types';
+import { projects as initialProjects, tasks as initialTasks, users as initialUsers } from '@/lib/data';
 
 interface DataContextType {
   projects: Project[];
   tasks: Task[];
+  users: User[];
   getTasksByProjectId: (projectId: string) => Task[];
   updateTaskStatus: (taskId: string, newStatus: TaskStatus, projectId: string) => void;
   getTaskById: (taskId: string) => Task | undefined;
   addComment: (taskId: string, comment: { userId: string, content: string }) => void;
+  addUser: (user: Omit<User, 'id' | 'avatarUrl'>) => User;
+  updateUserRole: (userId: string, role: UserRole) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -19,6 +22,7 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 export function DataProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const [users, setUsers] = useState<User[]>(initialUsers);
 
   const getTasksByProjectId = useCallback((projectId: string) => {
     return tasks.filter(task => task.projectId === projectId);
@@ -55,8 +59,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const addUser = useCallback((user: Omit<User, 'id' | 'avatarUrl'>) => {
+    const newUser: User = {
+      ...user,
+      id: `user-${Date.now()}`,
+      avatarUrl: `https://i.pravatar.cc/150?u=user-${Date.now()}`,
+    };
+    setUsers(prevUsers => [...prevUsers, newUser]);
+    return newUser;
+  }, []);
+
+  const updateUserRole = useCallback((userId: string, role: UserRole) => {
+    setUsers(prevUsers => prevUsers.map(user => 
+      user.id === userId ? { ...user, role } : user
+    ));
+  }, []);
+
   return (
-    <DataContext.Provider value={{ projects, tasks, getTasksByProjectId, updateTaskStatus, getTaskById, addComment }}>
+    <DataContext.Provider value={{ projects, tasks, users, getTasksByProjectId, updateTaskStatus, getTaskById, addComment, addUser, updateUserRole }}>
       {children}
     </DataContext.Provider>
   );

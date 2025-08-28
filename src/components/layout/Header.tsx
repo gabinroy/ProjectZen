@@ -11,6 +11,7 @@ import { SidebarTrigger } from '../ui/sidebar';
 function getTitle(pathname: string, projects: any[]) {
     if (pathname === '/') return 'Dashboard';
     if (pathname === '/projects') return 'Projects';
+    if (pathname === '/settings') return 'Settings';
     if (pathname.startsWith('/projects/')) {
         const projectId = pathname.split('/')[2];
         const project = projects.find(p => p.id === projectId);

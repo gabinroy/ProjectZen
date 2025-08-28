@@ -6,10 +6,10 @@ import { DataProvider } from '@/contexts/DataContext';
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <AuthProvider>
-      <DataProvider>
+    <DataProvider>
+      <AuthProvider>
         {children}
-      </DataProvider>
-    </AuthProvider>
+      </AuthProvider>
+    </DataProvider>
   );
 }
