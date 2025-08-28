@@ -3,12 +3,13 @@
 import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import type { User, UserRole } from '@/lib/types';
+import type { User } from '@/lib/types';
 import { users } from '@/lib/data';
+import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, role: UserRole) => void;
+  login: (email: string, password?: string) => void;
   logout: () => void;
   loading: boolean;
 }
@@ -19,6 +20,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
     try {
@@ -34,25 +36,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = useCallback((email: string, role: UserRole) => {
-    const foundUser = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.role === role);
+  const login = useCallback((email: string, password?: string) => {
+    const foundUser = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
     if (foundUser) {
       setUser(foundUser);
       localStorage.setItem('projectzen-user', JSON.stringify(foundUser));
       router.push('/');
     } else {
-      // In a real app, you'd show an error.
-      // For this demo, we'll find the first user with the selected role.
-      const userByRole = users.find(u => u.role === role);
-      if (userByRole) {
-        setUser(userByRole);
-        localStorage.setItem('projectzen-user', JSON.stringify(userByRole));
-        router.push('/');
-      } else {
-        alert('No user found for this role.');
-      }
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: "Invalid email or password.",
+      })
     }
-  }, [router]);
+  }, [router, toast]);
 
   const logout = useCallback(() => {
     setUser(null);

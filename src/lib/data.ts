@@ -1,10 +1,10 @@
 import type { User, Project, Task, TaskStatus, Comment } from './types';
 
 export const users: User[] = [
-  { id: 'user-1', name: 'Alex Doe', email: 'alex@example.com', avatarUrl: 'https://i.pravatar.cc/150?u=user-1', role: 'Admin' },
-  { id: 'user-2', name: 'Jane Smith', email: 'jane@example.com', avatarUrl: 'https://i.pravatar.cc/150?u=user-2', role: 'Manager' },
-  { id: 'user-3', name: 'Sam Wilson', email: 'sam@example.com', avatarUrl: 'https://i.pravatar.cc/150?u=user-3', role: 'Team Member' },
-  { id: 'user-4', name: 'Casey Jones', email: 'casey@example.com', avatarUrl: 'https://i.pravatar.cc/150?u=user-4', role: 'Team Member' },
+  { id: 'user-1', name: 'Alex Doe', email: 'alex@example.com', password: 'password-admin', avatarUrl: 'https://i.pravatar.cc/150?u=user-1', role: 'Admin' },
+  { id: 'user-2', name: 'Jane Smith', email: 'jane@example.com', password: 'password-manager', avatarUrl: 'https://i.pravatar.cc/150?u=user-2', role: 'Manager' },
+  { id: 'user-3', name: 'Sam Wilson', email: 'sam@example.com', password: 'password-member', avatarUrl: 'https://i.pravatar.cc/150?u=user-3', role: 'Team Member' },
+  { id: 'user-4', name: 'Casey Jones', email: 'casey@example.com', password: 'password-member2', avatarUrl: 'https://i.pravatar.cc/150?u=user-4', role: 'Team Member' },
 ];
 
 export const projects: Project[] = [

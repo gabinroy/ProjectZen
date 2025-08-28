@@ -14,24 +14,16 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
-import type { UserRole } from "@/lib/types";
 import { users } from "@/lib/data";
 
 const formSchema = z.object({
   email: z.string().email({
     message: "Please enter a valid email.",
   }),
-  role: z.enum(["Admin", "Manager", "Team Member"]),
+  password: z.string().min(1, { message: "Password is required." }),
 });
 
 export function LoginForm() {
@@ -41,12 +33,12 @@ export function LoginForm() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: users[1].email, // Default to manager
-      role: "Manager",
+      password: "",
     },
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    login(values.email, values.role as UserRole);
+    login(values.email, values.password);
   }
 
   return (
@@ -69,22 +61,13 @@ export function LoginForm() {
             />
              <FormField
               control={form.control}
-              name="role"
+              name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Role</FormLabel>
-                   <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a role to sign in as" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="Admin">Admin</SelectItem>
-                      <SelectItem value="Manager">Manager</SelectItem>
-                      <SelectItem value="Team Member">Team Member</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="********" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
