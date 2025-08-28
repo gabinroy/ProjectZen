@@ -17,7 +17,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
-import { users } from "@/lib/data";
 
 const formSchema = z.object({
   email: z.string().email({
@@ -32,7 +31,7 @@ export function LoginForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: users[1].email, // Default to manager
+      email: "",
       password: "",
     },
   });
