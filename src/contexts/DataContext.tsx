@@ -15,6 +15,9 @@ interface DataContextType {
   addComment: (taskId: string, comment: { userId: string, content: string }) => void;
   addUser: (user: Omit<User, 'id' | 'avatarUrl'>) => User;
   updateUserRole: (userId: string, role: UserRole) => void;
+  addProject: (project: Omit<Project, 'id' | 'memberIds'>, managerId: string) => void;
+  updateProjectMembers: (projectId: string, memberIds: string[]) => void;
+  getProjectById: (projectId: string) => Project | undefined;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -31,6 +34,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const getTaskById = useCallback((taskId: string) => {
     return tasks.find(task => task.id === taskId);
   }, [tasks]);
+  
+  const getProjectById = useCallback((projectId: string) => {
+    return projects.find(p => p.id === projectId);
+  }, [projects]);
 
   const updateTaskStatus = useCallback((taskId: string, newStatus: TaskStatus, projectId: string) => {
     setTasks(prevTasks => {
@@ -74,9 +81,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
       user.id === userId ? { ...user, role } : user
     ));
   }, []);
+  
+  const addProject = useCallback((project: Omit<Project, 'id' | 'memberIds'>, managerId: string) => {
+    const newProject: Project = {
+      ...project,
+      id: `proj-${Date.now()}`,
+      memberIds: [managerId] // Start with the manager as a member
+    };
+    setProjects(prevProjects => [newProject, ...prevProjects]);
+  }, []);
+
+  const updateProjectMembers = useCallback((projectId: string, memberIds: string[]) => {
+    setProjects(prevProjects => prevProjects.map(p => 
+      p.id === projectId ? { ...p, memberIds } : p
+    ));
+  }, []);
 
   return (
-    <DataContext.Provider value={{ projects, tasks, users, getTasksByProjectId, updateTaskStatus, getTaskById, addComment, addUser, updateUserRole }}>
+    <DataContext.Provider value={{ projects, tasks, users, getTasksByProjectId, updateTaskStatus, getTaskById, addComment, addUser, updateUserRole, addProject, updateProjectMembers, getProjectById }}>
       {children}
     </DataContext.Provider>
   );
