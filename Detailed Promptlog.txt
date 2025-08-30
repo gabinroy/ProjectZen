@@ -267,3 +267,22 @@ Here are the changes.
 
 8aaf75a
 I've implemented the complex permission logic for updating task priority and due dates. Now, when you view a task's details, you'll see an edit icon next to the priority if you have permission to change it. This will prevent unauthorized users from making changes according to the rules you specified.
+
+G Abin
+Can you implement the feature of threaded comment in the comment section of this project
+
+Gemini
+Of course. I will implement threaded comments, which will allow users to reply to specific comments and create nested conversations within a task. This will improve organization and make it easier to follow discussions.
+
+Here are the changes I'll make:
+
+Data Structure: I'll update the Comment type to include a parentId, establishing the relationship between replies and their parent comments.
+Data Context: The addComment function will be modified to handle saving replies with their parentId.
+UI: The TaskDetailsDialog will be updated to:
+Display comments in a nested, threaded view.
+Add a "Reply" button to each comment.
+Show a form to submit a reply directly beneath the parent comment.
+Here are the changes.
+
+0af8ac6
+I've implemented threaded comments. Now you can reply directly to comments, creating organized discussion threads within each task.
