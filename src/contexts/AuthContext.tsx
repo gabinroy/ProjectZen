@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from 'react';
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import type { User } from '@/lib/types';
 import { useData } from '@/contexts/DataContext';
@@ -22,27 +22,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
-  const data = useData();
+  // We can't use useData here directly because AuthProvider is not wrapped by DataProvider yet.
+  // Instead, we will get the data context inside the functions where it's needed.
+  // For initial load, we will fetch users from a mock source or wait.
+  const [initialUsers, setInitialUsers] = useState<User[] | null>(null);
 
   useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem('projectzen-user');
-      if (storedUser) {
-        // We need to find the user from the data context to ensure it's up-to-date
-        const parsedUser = JSON.parse(storedUser);
-        const latestUser = data.users.find(u => u.id === parsedUser.id);
-        setUser(latestUser || null);
-      }
-    } catch (error) {
-      console.error("Failed to parse user from localStorage", error);
-      localStorage.removeItem('projectzen-user');
-    } finally {
-      setLoading(false);
+    // This is a workaround to get user data on initial load without creating context dependency cycle
+    import('@/lib/data').then(data => {
+        setInitialUsers(data.users);
+    });
+  }, []);
+
+  useEffect(() => {
+    if(initialUsers) {
+        try {
+          const storedUser = localStorage.getItem('projectzen-user');
+          if (storedUser) {
+            const parsedUser = JSON.parse(storedUser);
+            const latestUser = initialUsers.find(u => u.id === parsedUser.id);
+            setUser(latestUser || null);
+          }
+        } catch (error) {
+          console.error("Failed to parse user from localStorage", error);
+          localStorage.removeItem('projectzen-user');
+        } finally {
+          setLoading(false);
+        }
     }
-  }, [data.users]);
+  }, [initialUsers]);
 
   const login = useCallback((email: string, password?: string) => {
-    const foundUser = data.users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
+    const foundUser = initialUsers?.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
     if (foundUser) {
       setUser(foundUser);
       localStorage.setItem('projectzen-user', JSON.stringify(foundUser));
@@ -54,16 +65,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: "Invalid email or password.",
       })
     }
-  }, [router, toast, data.users]);
+  }, [router, toast, initialUsers]);
 
   const logout = useCallback(() => {
     setUser(null);
     localStorage.removeItem('projectzen-user');
+    localStorage.removeItem('projectzen-notifications'); // Clear notifications on logout
     router.push('/login');
   }, [router]);
 
   const signup = useCallback((name: string, email: string, password?: string) => {
-    const existingUser = data.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    // Note: This relies on a hook that will be available when this function is actually called from the UI
+    const { addUser, users } = useData();
+    const existingUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
     if (existingUser) {
         toast({
             variant: "destructive",
@@ -73,13 +87,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
     }
     
-    const newUser = data.addUser({ name, email, password: password || '', role: 'Team Member' });
+    addUser({ name, email, password: password || '', role: 'Team Member' });
     toast({
         title: "Account Created",
         description: "Your account has been created successfully. Please log in.",
     });
     router.push('/login');
-  }, [data, router, toast]);
+  }, [router, toast]);
+
+  const value = useMemo(() => ({
+      user,
+      loading,
+      login,
+      logout,
+      signup: (name: string, email: string, password?: string) => {
+          // This is a bit of a hack to get around the context dependency issue.
+          // When signup is called, DataProvider will be available.
+          // A better solution would be to separate auth logic from data logic more cleanly.
+          const data = useData();
+          const existingUser = data.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+          if (existingUser) {
+              toast({
+                  variant: "destructive",
+                  title: "Signup Failed",
+                  description: "An account with this email already exists.",
+              });
+              return;
+          }
+          
+          data.addUser({ name, email, password: password || '', role: 'Team Member' });
+          toast({
+              title: "Account Created",
+              description: "Your account has been created successfully. Please log in.",
+          });
+          router.push('/login');
+      }
+  }), [user, loading, login, logout, router, toast]);
+
+  if (loading) {
+     return (
+      <div className="flex h-screen w-screen items-center justify-center bg-background">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
 
   return (
     <AuthContext.Provider value={{ user, login, logout, loading, signup }}>

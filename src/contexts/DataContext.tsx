@@ -2,9 +2,11 @@
 "use client";
 
 import type { ReactNode } from 'react';
-import { createContext, useContext, useState, useCallback, useMemo } from 'react';
-import type { Project, Task, TaskStatus, User, UserRole } from '@/lib/types';
+import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import type { Project, Task, TaskStatus, User, UserRole, Notification } from '@/lib/types';
 import { projects as initialProjects, tasks as initialTasks, users as initialUsers } from '@/lib/data';
+import { useNotifications } from './NotificationContext';
+import { differenceInDays } from 'date-fns';
 
 interface DataContextType {
   projects: Project[];
@@ -28,8 +30,35 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [users, setUsers] = useState<User[]>(initialUsers);
+  const { addNotification } = useNotifications();
 
   const adminUser = useMemo(() => users.find(u => u.role === 'Admin'), [users]);
+
+  useEffect(() => {
+    // Generate notifications for tasks due soon or overdue
+    tasks.forEach(task => {
+        if (task.status !== 'Done') {
+            const daysUntilDue = differenceInDays(new Date(task.dueDate), new Date());
+            let message = '';
+            if (daysUntilDue < 0) {
+                message = `Task "${task.title}" is overdue!`;
+            } else if (daysUntilDue <= 2) {
+                message = `Task "${task.title}" is due soon.`;
+            }
+
+            if (message) {
+                task.assigneeIds.forEach(userId => {
+                    addNotification({
+                        userId,
+                        message,
+                        taskId: task.id,
+                        projectId: task.projectId,
+                    }, true); 
+                });
+            }
+        }
+    });
+  }, [tasks, addNotification]);
 
   const getTasksByProjectId = useCallback((projectId: string) => {
     return tasks.filter(task => task.projectId === projectId);
@@ -97,10 +126,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [adminUser]);
 
   const updateProjectMembers = useCallback((projectId: string, memberIds: string[]) => {
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return;
+    const currentMembers = project.memberIds;
+    const newMembers = memberIds.filter(id => !currentMembers.includes(id));
+
+    newMembers.forEach(userId => {
+        addNotification({
+            userId,
+            message: `You have been added to the project "${project.name}".`,
+            projectId: project.id,
+        });
+    });
+
     setProjects(prevProjects => prevProjects.map(p => 
       p.id === projectId ? { ...p, memberIds } : p
     ));
-  }, []);
+  }, [projects, addNotification]);
 
   const addTask = useCallback((task: Omit<Task, 'id' | 'status' | 'comments' | 'attachments'>) => {
     const newTask: Task = {
@@ -110,8 +152,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
         comments: [],
         attachments: [],
     };
+    
+    newTask.assigneeIds.forEach(userId => {
+        addNotification({
+            userId,
+            message: `You have been assigned a new task: "${newTask.title}".`,
+            taskId: newTask.id,
+            projectId: newTask.projectId,
+        });
+    });
+
     setTasks(prevTasks => [newTask, ...prevTasks]);
-  }, []);
+  }, [addNotification]);
 
   return (
     <DataContext.Provider value={{ projects, tasks, users, getTasksByProjectId, updateTaskStatus, getTaskById, addComment, addUser, updateUserRole, addProject, updateProjectMembers, getProjectById, addTask }}>

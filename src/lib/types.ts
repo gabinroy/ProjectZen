@@ -45,3 +45,13 @@ export interface Project {
   ownerId: string;
   memberIds: string[];
 }
+
+export interface Notification {
+  id: string;
+  userId: string;
+  message: string;
+  taskId?: string;
+  projectId?: string;
+  createdAt: string;
+  read: boolean;
+}
