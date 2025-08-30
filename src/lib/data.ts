@@ -13,7 +13,7 @@ export const projects: Project[] = [
     name: 'Website Redesign',
     description: 'Complete overhaul of the company website to improve user experience and refresh the branding.',
     ownerId: 'user-2',
-    memberIds: ['user-2', 'user-3', 'user-4'],
+    memberIds: ['user-1', 'user-2', 'user-3', 'user-4'],
   },
   {
     id: 'proj-2',
@@ -27,7 +27,7 @@ export const projects: Project[] = [
     name: 'Q3 Marketing Campaign',
     description: 'Plan and execute the marketing campaign for the third quarter, focusing on social media engagement.',
     ownerId: 'user-2',
-    memberIds: ['user-2', 'user-4'],
+    memberIds: ['user-1', 'user-2', 'user-4'],
   },
 ];
 

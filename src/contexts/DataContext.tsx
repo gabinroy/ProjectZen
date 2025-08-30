@@ -1,7 +1,8 @@
+
 "use client";
 
 import type { ReactNode } from 'react';
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import type { Project, Task, TaskStatus, User, UserRole } from '@/lib/types';
 import { projects as initialProjects, tasks as initialTasks, users as initialUsers } from '@/lib/data';
 
@@ -28,6 +29,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [users, setUsers] = useState<User[]>(initialUsers);
 
+  const adminUser = useMemo(() => users.find(u => u.role === 'Admin'), [users]);
+
   const getTasksByProjectId = useCallback((projectId: string) => {
     return tasks.filter(task => task.projectId === projectId);
   }, [tasks]);
@@ -40,7 +43,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return projects.find(p => p.id === projectId);
   }, [projects]);
 
-  const updateTaskStatus = useCallback((taskId: string, newStatus: TaskStatus, projectId: string) => {
+  const updateTaskStatus = useCallback((taskId: string, newStatus: TaskStatus, projectId:string) => {
     setTasks(prevTasks => {
       const newTasks = prevTasks.map(task => 
         task.id === taskId ? { ...task, status: newStatus } : task
@@ -84,13 +87,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, []);
   
   const addProject = useCallback((project: Omit<Project, 'id' | 'memberIds'>, managerId: string) => {
+    if (!adminUser) return;
     const newProject: Project = {
       ...project,
       id: `proj-${Date.now()}`,
-      memberIds: [managerId] // Start with the manager as a member
+      memberIds: [managerId, adminUser.id]
     };
     setProjects(prevProjects => [newProject, ...prevProjects]);
-  }, []);
+  }, [adminUser]);
 
   const updateProjectMembers = useCallback((projectId: string, memberIds: string[]) => {
     setProjects(prevProjects => prevProjects.map(p => 
