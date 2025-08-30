@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -6,6 +7,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,30 +19,37 @@ import { Separator } from "@/components/ui/separator";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { users } from "@/lib/data";
-import { Calendar, Paperclip, User, Bot, Loader2 } from "lucide-react";
+import { Calendar, Paperclip, User, Bot, Loader2, Trash2, X, Upload } from "lucide-react";
 import { format } from "date-fns";
 import type { DialogProps } from "@radix-ui/react-dialog";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { getSummary } from "@/app/actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatDistanceToNow } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
+import { Input } from "../ui/input";
 
 interface TaskDetailsDialogProps extends DialogProps {
   taskId: string;
+  onOpenChange: (open: boolean) => void;
 }
 
-export function TaskDetailsDialog({ taskId, ...props }: TaskDetailsDialogProps) {
-  const { getTaskById, addComment } = useData();
+export function TaskDetailsDialog({ taskId, onOpenChange, ...props }: TaskDetailsDialogProps) {
+  const { getTaskById, addComment, deleteTask, addAttachment, deleteAttachment } = useData();
   const { user: currentUser } = useAuth();
+  const { toast } = useToast();
   const task = getTaskById(taskId);
   const [newComment, setNewComment] = useState("");
   const [summary, setSummary] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
 
   if (!task || !currentUser) return null;
 
   const assignees = users.filter((u) => task.assigneeIds.includes(u.id));
-  
+  const canDeleteTask = currentUser.role === 'Admin' || currentUser.id === task.creatorId;
+  const canManageAttachments = task.assigneeIds.includes(currentUser.id) || currentUser.role === 'Admin' || currentUser.id === task.creatorId;
+
   const handleAddComment = () => {
     if (newComment.trim()) {
       addComment(taskId, { userId: currentUser.id, content: newComment.trim() });
@@ -57,8 +67,24 @@ export function TaskDetailsDialog({ taskId, ...props }: TaskDetailsDialogProps) 
     });
   };
 
+  const handleDeleteTask = () => {
+    deleteTask(taskId);
+    toast({ title: "Task Deleted", description: "The task has been successfully deleted." });
+    onOpenChange(false);
+  };
+  
+  const handleAttachmentUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+        Array.from(event.target.files).forEach(file => addAttachment(taskId, file));
+    }
+  };
+  
+  const handleTriggerUpload = () => {
+    attachmentInputRef.current?.click();
+  };
+
   return (
-    <Dialog {...props}>
+    <Dialog {...props} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-2xl">{task.title}</DialogTitle>
@@ -73,17 +99,35 @@ export function TaskDetailsDialog({ taskId, ...props }: TaskDetailsDialogProps) 
                 <div className="md:col-span-2 space-y-6">
                     <div>
                         <h3 className="font-semibold mb-2">Description</h3>
-                        <p className="text-sm text-muted-foreground">{task.description}</p>
+                        <p className="text-sm text-muted-foreground">{task.description || "No description provided."}</p>
                     </div>
 
                     <div>
-                        <h3 className="font-semibold mb-2">Attachments</h3>
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="font-semibold">Attachments</h3>
+                            {canManageAttachments && (
+                                <>
+                                <Button size="sm" variant="outline" onClick={handleTriggerUpload}>
+                                    <Upload className="h-4 w-4 mr-2" />
+                                    Upload
+                                </Button>
+                                <Input type="file" multiple ref={attachmentInputRef} className="hidden" onChange={handleAttachmentUpload} />
+                                </>
+                            )}
+                        </div>
                         <div className="space-y-2">
                         {task.attachments.length > 0 ? task.attachments.map(att => (
-                            <a key={att.id} href="#" className="flex items-center gap-2 text-sm p-2 rounded-md bg-secondary hover:bg-secondary/80">
-                                <Paperclip className="h-4 w-4" />
-                                <span>{att.fileName}</span>
-                            </a>
+                            <div key={att.id} className="flex items-center justify-between gap-2 text-sm p-2 rounded-md bg-secondary group">
+                                <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 truncate">
+                                    <Paperclip className="h-4 w-4" />
+                                    <span className="truncate">{att.fileName}</span>
+                                </a>
+                                {canManageAttachments && (
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => deleteAttachment(taskId, att.id)}>
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                )}
+                            </div>
                         )) : <p className="text-sm text-muted-foreground">No attachments.</p>}
                         </div>
                     </div>
@@ -180,6 +224,19 @@ export function TaskDetailsDialog({ taskId, ...props }: TaskDetailsDialogProps) 
             </div>
           </div>
         </ScrollArea>
+        <DialogFooter className="pt-4 border-t">
+            <div className="flex justify-between w-full">
+                {canDeleteTask ? (
+                     <Button variant="destructive" onClick={handleDeleteTask}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete Task
+                    </Button>
+                ) : <div></div>}
+                <DialogClose asChild>
+                    <Button variant="outline">Close</Button>
+                </DialogClose>
+            </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

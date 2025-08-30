@@ -3,10 +3,11 @@
 
 import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
-import type { Project, Task, TaskStatus, User, UserRole, Notification } from '@/lib/types';
+import type { Project, Task, TaskStatus, User, UserRole, Attachment } from '@/lib/types';
 import { projects as initialProjects, tasks as initialTasks, users as initialUsers } from '@/lib/data';
 import { useNotifications } from './NotificationContext';
 import { differenceInDays } from 'date-fns';
+import { useAuth } from './AuthContext';
 
 interface DataContextType {
   projects: Project[];
@@ -19,9 +20,13 @@ interface DataContextType {
   addUser: (user: Omit<User, 'id' | 'avatarUrl'>) => User;
   updateUserRole: (userId: string, role: UserRole) => void;
   addProject: (project: Omit<Project, 'id' | 'memberIds'>, managerId: string) => void;
+  deleteProject: (projectId: string) => void;
   updateProjectMembers: (projectId: string, memberIds: string[]) => void;
   getProjectById: (projectId: string) => Project | undefined;
-  addTask: (task: Omit<Task, 'id' | 'status' | 'comments' | 'attachments'>) => void;
+  addTask: (task: Omit<Task, 'id' | 'status' | 'comments' | 'attachments' | 'creatorId'>) => void;
+  deleteTask: (taskId: string) => void;
+  addAttachment: (taskId: string, file: File) => void;
+  deleteAttachment: (taskId: string, attachmentId: string) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -31,6 +36,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [users, setUsers] = useState<User[]>(initialUsers);
   const { addNotification } = useNotifications();
+  const { user: currentUser } = useAuth();
 
   const adminUser = useMemo(() => users.find(u => u.role === 'Admin'), [users]);
 
@@ -125,6 +131,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setProjects(prevProjects => [newProject, ...prevProjects]);
   }, [adminUser]);
 
+  const deleteProject = useCallback((projectId: string) => {
+    setProjects(prev => prev.filter(p => p.id !== projectId));
+    setTasks(prev => prev.filter(t => t.projectId !== projectId));
+  }, []);
+
   const updateProjectMembers = useCallback((projectId: string, memberIds: string[]) => {
     const project = projects.find(p => p.id === projectId);
     if (!project) return;
@@ -144,13 +155,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
     ));
   }, [projects, addNotification]);
 
-  const addTask = useCallback((task: Omit<Task, 'id' | 'status' | 'comments' | 'attachments'>) => {
+  const addTask = useCallback((task: Omit<Task, 'id' | 'status' | 'comments' | 'attachments' | 'creatorId'>) => {
+    if (!currentUser) return;
     const newTask: Task = {
         ...task,
         id: `task-${Date.now()}`,
         status: 'Todo',
         comments: [],
         attachments: [],
+        creatorId: currentUser.id,
     };
     
     newTask.assigneeIds.forEach(userId => {
@@ -163,10 +176,33 @@ export function DataProvider({ children }: { children: ReactNode }) {
     });
 
     setTasks(prevTasks => [newTask, ...prevTasks]);
-  }, [addNotification]);
+  }, [addNotification, currentUser]);
+
+  const deleteTask = useCallback((taskId: string) => {
+    setTasks(prev => prev.filter(t => t.id !== taskId));
+  }, []);
+
+  const addAttachment = useCallback((taskId: string, file: File) => {
+    const newAttachment: Attachment = {
+      id: `attach-${Date.now()}`,
+      fileName: file.name,
+      url: URL.createObjectURL(file),
+    };
+    setTasks(prev => prev.map(t => t.id === taskId ? {...t, attachments: [...t.attachments, newAttachment]} : t));
+  }, []);
+
+  const deleteAttachment = useCallback((taskId: string, attachmentId: string) => {
+    setTasks(prev => prev.map(t => t.id === taskId ? {...t, attachments: t.attachments.filter(a => a.id !== attachmentId)} : t));
+  }, []);
+
 
   return (
-    <DataContext.Provider value={{ projects, tasks, users, getTasksByProjectId, updateTaskStatus, getTaskById, addComment, addUser, updateUserRole, addProject, updateProjectMembers, getProjectById, addTask }}>
+    <DataContext.Provider value={{ 
+        projects, tasks, users, getTasksByProjectId, 
+        updateTaskStatus, getTaskById, addComment, addUser, 
+        updateUserRole, addProject, deleteProject, updateProjectMembers, getProjectById, 
+        addTask, deleteTask, addAttachment, deleteAttachment 
+    }}>
       {children}
     </DataContext.Provider>
   );

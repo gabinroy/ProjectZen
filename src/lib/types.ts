@@ -15,6 +15,7 @@ export interface Comment {
   id: string;
   taskId: string;
   userId: string;
+
   content: string;
   createdAt: string;
 }
@@ -36,6 +37,7 @@ export interface Task {
   comments: Comment[];
   attachments: Attachment[];
   projectId: string;
+  creatorId: string;
 }
 
 export interface Project {

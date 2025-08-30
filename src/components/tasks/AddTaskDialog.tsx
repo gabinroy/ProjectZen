@@ -52,7 +52,7 @@ export function AddTaskDialog({ onOpenChange, projectId, ...props }: AddTaskDial
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    const taskData: Omit<Task, 'id' | 'status' | 'comments' | 'attachments'> = {
+    const taskData: Omit<Task, 'id' | 'status' | 'comments' | 'attachments' | 'creatorId'> = {
         projectId,
         title: values.title,
         description: values.description || "",
@@ -235,6 +235,7 @@ export function AddTaskDialog({ onOpenChange, projectId, ...props }: AddTaskDial
                 </FormItem>
               )}
             />
+            {/* Attachments field will be handled in TaskDetailsDialog for simplicity */}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button type="submit">Create Task</Button>
@@ -245,4 +246,3 @@ export function AddTaskDialog({ onOpenChange, projectId, ...props }: AddTaskDial
     </Dialog>
   );
 }
-

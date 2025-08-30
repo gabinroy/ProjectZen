@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -7,13 +8,23 @@ import { Button } from "@/components/ui/button";
 import type { Project } from "@/lib/types";
 import { useData } from "@/contexts/DataContext";
 import { users } from "@/lib/data";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Trash2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { MoreVertical } from "lucide-react";
+
 
 interface ProjectCardProps {
   project: Project;
+  onDelete: () => void;
+  canDelete: boolean;
 }
 
-export function ProjectCard({ project }: ProjectCardProps) {
+export function ProjectCard({ project, onDelete, canDelete }: ProjectCardProps) {
   const { tasks } = useData();
   const projectTasks = tasks.filter(t => t.projectId === project.id);
   const completedTasks = projectTasks.filter(t => t.status === 'Done').length;
@@ -22,11 +33,28 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
   return (
     <Card className="flex flex-col">
-      <CardHeader>
-        <CardTitle className="truncate">{project.name}</CardTitle>
-        <CardDescription className="h-10 text-ellipsis overflow-hidden">
-          {project.description}
-        </CardDescription>
+       <CardHeader className="flex flex-row items-start justify-between">
+         <div className="flex-1">
+            <CardTitle className="truncate">{project.name}</CardTitle>
+            <CardDescription className="h-10 text-ellipsis overflow-hidden pt-1">
+            {project.description}
+            </CardDescription>
+         </div>
+         {canDelete && (
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                        <MoreVertical className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={onDelete} className="text-destructive">
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete Project
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+         )}
       </CardHeader>
       <CardContent className="flex-grow">
         <div className="text-sm text-muted-foreground mb-2">Progress</div>

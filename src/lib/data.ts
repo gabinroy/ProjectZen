@@ -66,6 +66,7 @@ export const tasks: Task[] = [
   {
     id: 'task-1',
     projectId: 'proj-1',
+    creatorId: 'user-2',
     title: 'Design initial mockups and wireframes',
     description: 'Create detailed wireframes for the new homepage and key landing pages.',
     status: 'In Progress',
@@ -78,6 +79,7 @@ export const tasks: Task[] = [
   {
     id: 'task-2',
     projectId: 'proj-1',
+    creatorId: 'user-2',
     title: 'Develop user authentication flow',
     description: 'Implement sign-up, sign-in, and password reset functionality.',
     status: 'In Progress',
@@ -90,6 +92,7 @@ export const tasks: Task[] = [
   {
     id: 'task-3',
     projectId: 'proj-1',
+    creatorId: 'user-1',
     title: 'Set up staging environment',
     description: 'Configure the staging server and deployment pipeline.',
     status: 'Todo',
@@ -102,6 +105,7 @@ export const tasks: Task[] = [
   {
     id: 'task-4',
     projectId: 'proj-1',
+    creatorId: 'user-2',
     title: 'Finalize branding style guide',
     description: 'Choose final color palette, typography, and logo variations.',
     status: 'Done',
@@ -114,6 +118,7 @@ export const tasks: Task[] = [
   {
     id: 'task-5',
     projectId: 'proj-2',
+    creatorId: 'user-1',
     title: 'Market research for iOS app features',
     description: 'Analyze competitor apps and identify key features for MVP.',
     status: 'Done',
@@ -126,6 +131,7 @@ export const tasks: Task[] = [
   {
     id: 'task-6',
     projectId: 'proj-2',
+    creatorId: 'user-1',
     title: 'Build API endpoints for user profiles',
     description: 'Create RESTful endpoints for creating, reading, and updating user data.',
     status: 'In Progress',
@@ -138,6 +144,7 @@ export const tasks: Task[] = [
   {
     id: 'task-7',
     projectId: 'proj-2',
+    creatorId: 'user-2',
     title: 'Design onboarding screens',
     description: 'Design a seamless and engaging onboarding experience for new users.',
     status: 'Todo',
@@ -150,6 +157,7 @@ export const tasks: Task[] = [
   {
     id: 'task-8',
     projectId: 'proj-3',
+    creatorId: 'user-2',
     title: 'Identify target audience for social media',
     description: 'Define the primary and secondary target audiences for the campaign.',
     status: 'Done',
@@ -162,6 +170,7 @@ export const tasks: Task[] = [
   {
     id: 'task-9',
     projectId: 'proj-3',
+    creatorId: 'user-2',
     title: 'Create content calendar',
     description: 'Schedule posts for Instagram, Twitter, and Facebook for the next 30 days.',
     status: 'Todo',
