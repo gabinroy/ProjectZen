@@ -18,6 +18,7 @@ interface DataContextType {
   addProject: (project: Omit<Project, 'id' | 'memberIds'>, managerId: string) => void;
   updateProjectMembers: (projectId: string, memberIds: string[]) => void;
   getProjectById: (projectId: string) => Project | undefined;
+  addTask: (task: Omit<Task, 'id' | 'status' | 'comments' | 'attachments'>) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -97,8 +98,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
     ));
   }, []);
 
+  const addTask = useCallback((task: Omit<Task, 'id' | 'status' | 'comments' | 'attachments'>) => {
+    const newTask: Task = {
+        ...task,
+        id: `task-${Date.now()}`,
+        status: 'Todo',
+        comments: [],
+        attachments: [],
+    };
+    setTasks(prevTasks => [newTask, ...prevTasks]);
+  }, []);
+
   return (
-    <DataContext.Provider value={{ projects, tasks, users, getTasksByProjectId, updateTaskStatus, getTaskById, addComment, addUser, updateUserRole, addProject, updateProjectMembers, getProjectById }}>
+    <DataContext.Provider value={{ projects, tasks, users, getTasksByProjectId, updateTaskStatus, getTaskById, addComment, addUser, updateUserRole, addProject, updateProjectMembers, getProjectById, addTask }}>
       {children}
     </DataContext.Provider>
   );

@@ -33,6 +33,7 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
           tasks={tasks.filter(t => t.status === status)}
           onDrop={handleDrop}
           onDragStart={handleDragStart}
+          projectId={projectId}
         />
       ))}
     </div>
