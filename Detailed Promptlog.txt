@@ -101,8 +101,6 @@ Of course. I can add the ability for Admins to create projects and for both Admi
 Restore
 I've implemented the requested features. Now, Admins can create new projects and assign a Manager from the projects page. Once inside a project, both Admins and the designated Manager can add or remove team members.
 
-
-
 G Abin
 Try fixing this error: Build Error: Module not found: Can't resolve '@/co...
 
@@ -224,3 +222,48 @@ I'll update the component to correctly handle the params object. Here are the ch
 
 e0028f8
 I've made the necessary changes to correctly access the project ID. This should resolve the error you were seeing.
+
+G Abin
+Can you make a small change that while creating, new task, there must be an option to add attachments. The person assigned to the task can add more attachments or can delete it. Also must have an option to delete task, which can be only done by the the person, who creates the task and by the admin. Also the admin has the access to delete the project.
+
+Gemini
+Of course. I can implement those features for you. I'll add the ability to manage task attachments, allow authorized users to delete tasks, and give Admins the power to delete entire projects.
+
+Here are the changes I'll make:
+
+3474e95
+
+Restore
++2 more files
+I've updated the application with the new features. You can now manage attachments within the task details view, and authorized users can delete tasks. Additionally, Admins now have the ability to delete projects directly from the projects page.
+
+
+
+G Abin
+Add the feature of adding attachment to existing tasks and new tasks
+
+Gemini
+Of course. I will add the ability to include attachments when creating a new task, in addition to the existing functionality for adding them to existing tasks. Here are the changes.
+
+c8d952c
+
+Restore
+I've updated the "Add New Task" form so you can now add attachments when creating a task. Let me know if there is anything else I can help with.
+
+
+
+G Abin
+The admin , manager and the person who created the task can update the priority and Due date. Once the manager updates the Due date and priority of the task , even the person who created the task can't update it, But the Admin can update that. Once the admin updated the priority and Due date No one rather than admin can't update that
+
+Gemini
+Of course. I can implement this granular permission model for updating a task's priority and due date. This will require tracking who last updated these fields to enforce the hierarchy of control (Admin > Manager > Task Creator).
+
+Here is the plan:
+
+Update the Task data structure: I'll add a new field to each task to store who last modified its priority or due date.
+Modify the Data Context: The logic for updating a task will be enhanced to check permissions based on the new rules and to record who made the change.
+Adjust the UI: The "Task Details" dialog will be updated to show and allow editing of the priority and due date fields, with the edit controls enabled or disabled based on the new permission logic.
+Here are the changes.
+
+8aaf75a
+I've implemented the complex permission logic for updating task priority and due dates. Now, when you view a task's details, you'll see an edit icon next to the priority if you have permission to change it. This will prevent unauthorized users from making changes according to the rules you specified.
