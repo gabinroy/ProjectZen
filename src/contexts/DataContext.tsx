@@ -23,10 +23,11 @@ interface DataContextType {
   deleteProject: (projectId: string) => void;
   updateProjectMembers: (projectId: string, memberIds: string[]) => void;
   getProjectById: (projectId: string) => Project | undefined;
-  addTask: (task: Omit<Task, 'id' | 'status' | 'comments' | 'creatorId'>) => void;
+  addTask: (task: Omit<Task, 'id' | 'status' | 'comments' | 'creatorId' | 'lastPriorityDueDateUpdater'>) => void;
   deleteTask: (taskId: string) => void;
   addAttachment: (taskId: string, file: File) => void;
   deleteAttachment: (taskId: string, attachmentId: string) => void;
+  updateTaskPriorityAndDueDate: (taskId: string, priority: Task['priority'], dueDate: string) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -195,13 +196,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setTasks(prev => prev.map(t => t.id === taskId ? {...t, attachments: t.attachments.filter(a => a.id !== attachmentId)} : t));
   }, []);
 
+  const updateTaskPriorityAndDueDate = useCallback((taskId: string, priority: Task['priority'], dueDate: string) => {
+      if (!currentUser) return;
+      setTasks(prev => prev.map(t => {
+          if (t.id === taskId) {
+              return {
+                  ...t,
+                  priority,
+                  dueDate,
+                  lastPriorityDueDateUpdater: {
+                      userId: currentUser.id,
+                      role: currentUser.role,
+                  }
+              }
+          }
+          return t;
+      }))
+  }, [currentUser]);
+
 
   return (
     <DataContext.Provider value={{ 
         projects, tasks, users, getTasksByProjectId, 
         updateTaskStatus, getTaskById, addComment, addUser, 
         updateUserRole, addProject, deleteProject, updateProjectMembers, getProjectById, 
-        addTask, deleteTask, addAttachment, deleteAttachment 
+        addTask, deleteTask, addAttachment, deleteAttachment, updateTaskPriorityAndDueDate
     }}>
       {children}
     </DataContext.Provider>

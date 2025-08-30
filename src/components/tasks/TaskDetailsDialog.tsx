@@ -19,15 +19,21 @@ import { Separator } from "@/components/ui/separator";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { users } from "@/lib/data";
-import { Calendar, Paperclip, User, Bot, Loader2, Trash2, X, Upload } from "lucide-react";
+import { Calendar, Paperclip, User, Bot, Loader2, Trash2, X, Upload, Edit } from "lucide-react";
 import { format } from "date-fns";
 import type { DialogProps } from "@radix-ui/react-dialog";
-import { useState, useTransition, useRef } from "react";
+import { useState, useTransition, useRef, useMemo } from "react";
 import { getSummary } from "@/app/actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "../ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarPicker } from "@/components/ui/calendar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { Task } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface TaskDetailsDialogProps extends DialogProps {
   taskId: string;
@@ -35,15 +41,36 @@ interface TaskDetailsDialogProps extends DialogProps {
 }
 
 export function TaskDetailsDialog({ taskId, onOpenChange, ...props }: TaskDetailsDialogProps) {
-  const { getTaskById, addComment, deleteTask, addAttachment, deleteAttachment } = useData();
+  const { getTaskById, addComment, deleteTask, addAttachment, deleteAttachment, updateTaskPriorityAndDueDate } = useData();
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const task = getTaskById(taskId);
+  
   const [newComment, setNewComment] = useState("");
   const [summary, setSummary] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedPriority, setEditedPriority] = useState<Task['priority']>(task?.priority || 'Medium');
+  const [editedDueDate, setEditedDueDate] = useState<Date | undefined>(task ? new Date(task.dueDate) : undefined);
+  
   const attachmentInputRef = useRef<HTMLInputElement>(null);
 
+  const canEditPriorityAndDueDate = useMemo(() => {
+    if (!task || !currentUser) return false;
+    if (currentUser.role === 'Admin') return true;
+    
+    const lastUpdater = task.lastPriorityDueDateUpdater;
+    if (lastUpdater) {
+      if (lastUpdater.role === 'Admin') return false; // Only Admin can edit after Admin
+      if (lastUpdater.role === 'Manager' && currentUser.role !== 'Manager') return false;
+    }
+
+    const project = useData().getProjectById(task.projectId);
+    const isProjectManager = project?.ownerId === currentUser.id;
+
+    return isProjectManager || currentUser.id === task.creatorId;
+  }, [task, currentUser]);
+  
   if (!task || !currentUser) return null;
 
   const assignees = users.filter((u) => task.assigneeIds.includes(u.id));
@@ -83,8 +110,25 @@ export function TaskDetailsDialog({ taskId, onOpenChange, ...props }: TaskDetail
     attachmentInputRef.current?.click();
   };
 
+  const handleSavePriorityAndDueDate = () => {
+    if (editedDueDate) {
+      updateTaskPriorityAndDueDate(taskId, editedPriority, editedDueDate.toISOString());
+      toast({ title: "Task Updated", description: "Priority and due date have been updated." });
+      setIsEditing(false);
+    }
+  }
+  
+  const handleEditClick = () => {
+    setEditedPriority(task.priority);
+    setEditedDueDate(new Date(task.dueDate));
+    setIsEditing(true);
+  }
+
   return (
-    <Dialog {...props} onOpenChange={onOpenChange}>
+    <Dialog {...props} onOpenChange={(open) => {
+        if (!open) setIsEditing(false);
+        onOpenChange(open);
+    }}>
       <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-2xl">{task.title}</DialogTitle>
@@ -138,14 +182,60 @@ export function TaskDetailsDialog({ taskId, onOpenChange, ...props }: TaskDetail
                             <span className="text-sm font-semibold">Status</span>
                             <Badge variant="secondary">{task.status}</Badge>
                         </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-sm font-semibold">Priority</span>
-                            <Badge>{task.priority}</Badge>
-                        </div>
-                         <div className="space-y-2">
-                             <span className="text-sm font-semibold flex items-center gap-2"><Calendar className="h-4 w-4"/>Due Date</span>
-                             <p className="text-sm text-muted-foreground">{format(new Date(task.dueDate), "MMM d, yyyy")}</p>
-                         </div>
+                        
+                        {isEditing ? (
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-sm font-semibold">Priority</label>
+                                    <Select value={editedPriority} onValueChange={(v) => setEditedPriority(v as Task['priority'])}>
+                                        <SelectTrigger><SelectValue/></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Low">Low</SelectItem>
+                                            <SelectItem value="Medium">Medium</SelectItem>
+                                            <SelectItem value="High">High</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div>
+                                    <label className="text-sm font-semibold">Due Date</label>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !editedDueDate && "text-muted-foreground")}>
+                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                {editedDueDate ? format(editedDueDate, "PPP") : <span>Pick a date</span>}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0">
+                                            <CalendarPicker mode="single" selected={editedDueDate} onSelect={setEditedDueDate} initialFocus />
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button size="sm" onClick={handleSavePriorityAndDueDate}>Save</Button>
+                                    <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm font-semibold">Priority</span>
+                                     <div className="flex items-center gap-2">
+                                        <Badge>{task.priority}</Badge>
+                                        {canEditPriorityAndDueDate && (
+                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleEditClick}>
+                                                <Edit className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <span className="text-sm font-semibold flex items-center gap-2"><Calendar className="h-4 w-4"/>Due Date</span>
+                                    <p className="text-sm text-muted-foreground">{format(new Date(task.dueDate), "MMM d, yyyy")}</p>
+                                </div>
+                            </>
+                        )}
+
+
                          <div className="space-y-2">
                             <span className="text-sm font-semibold flex items-center gap-2"><User className="h-4 w-4"/>Assignees</span>
                             <div className="flex flex-wrap gap-2">

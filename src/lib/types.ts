@@ -21,7 +21,7 @@ export interface Comment {
 }
 
 export interface Attachment {
-  id: string;
+  id:string;
   fileName: string;
   url: string;
 }
@@ -38,6 +38,10 @@ export interface Task {
   attachments: Attachment[];
   projectId: string;
   creatorId: string;
+  lastPriorityDueDateUpdater?: {
+    userId: string;
+    role: UserRole;
+  }
 }
 
 export interface Project {
