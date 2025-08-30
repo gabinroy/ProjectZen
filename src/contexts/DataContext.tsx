@@ -3,7 +3,7 @@
 
 import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
-import type { Project, Task, TaskStatus, User, UserRole, Attachment } from '@/lib/types';
+import type { Project, Task, TaskStatus, User, UserRole, Attachment, Comment } from '@/lib/types';
 import { projects as initialProjects, tasks as initialTasks, users as initialUsers } from '@/lib/data';
 import { useNotifications } from './NotificationContext';
 import { differenceInDays } from 'date-fns';
@@ -16,7 +16,7 @@ interface DataContextType {
   getTasksByProjectId: (projectId: string) => Task[];
   updateTaskStatus: (taskId: string, newStatus: TaskStatus, projectId: string) => void;
   getTaskById: (taskId: string) => Task | undefined;
-  addComment: (taskId: string, comment: { userId: string, content: string }) => void;
+  addComment: (taskId: string, comment: { userId: string, content: string, parentId?: string }) => void;
   addUser: (user: Omit<User, 'id' | 'avatarUrl'>) => User;
   updateUserRole: (userId: string, role: UserRole) => void;
   addProject: (project: Omit<Project, 'id' | 'memberIds'>, managerId: string) => void;
@@ -88,10 +88,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     });
   }, []);
   
-  const addComment = useCallback((taskId: string, comment: { userId: string, content: string }) => {
+  const addComment = useCallback((taskId: string, comment: { userId: string, content: string, parentId?: string }) => {
     setTasks(prevTasks => prevTasks.map(task => {
       if (task.id === taskId) {
-        const newComment = {
+        const newComment: Comment = {
           ...comment,
           id: `comment-${Date.now()}`,
           taskId,

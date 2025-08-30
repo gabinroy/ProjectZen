@@ -19,10 +19,10 @@ import { Separator } from "@/components/ui/separator";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { users } from "@/lib/data";
-import { Calendar, Paperclip, User, Bot, Loader2, Trash2, X, Upload, Edit } from "lucide-react";
+import { Calendar, Paperclip, User, Bot, Loader2, Trash2, X, Upload, Edit, CornerDownRight } from "lucide-react";
 import { format } from "date-fns";
 import type { DialogProps } from "@radix-ui/react-dialog";
-import { useState, useTransition, useRef, useMemo } from "react";
+import { useState, useTransition, useRef, useMemo, Fragment } from "react";
 import { getSummary } from "@/app/actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatDistanceToNow } from "date-fns";
@@ -32,12 +32,86 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarIcon } from "lucide-react";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Task } from "@/lib/types";
+import type { Task, Comment } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 interface TaskDetailsDialogProps extends DialogProps {
   taskId: string;
   onOpenChange: (open: boolean) => void;
+}
+
+
+const CommentReplyForm = ({ taskId, parentId, onCommentAdded }: { taskId: string, parentId: string, onCommentAdded: () => void }) => {
+    const { addComment } = useData();
+    const { user: currentUser } = useAuth();
+    const [reply, setReply] = useState("");
+
+    const handleAddReply = () => {
+        if (reply.trim() && currentUser) {
+            addComment(taskId, { userId: currentUser.id, content: reply.trim(), parentId });
+            setReply("");
+            onCommentAdded();
+        }
+    }
+    
+    if (!currentUser) return null;
+
+    return (
+        <div className="mt-4 flex gap-3 pl-11">
+            <Avatar className="h-8 w-8">
+                <AvatarImage src={currentUser?.avatarUrl} />
+                <AvatarFallback>{currentUser?.name[0]}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 space-y-2">
+                <Textarea 
+                placeholder="Write a reply..."
+                value={reply}
+                onChange={(e) => setReply(e.target.value)}
+                />
+                <Button size="sm" onClick={handleAddReply} disabled={!reply.trim()}>Reply</Button>
+            </div>
+        </div>
+    );
+};
+
+const CommentThread = ({ comment, allComments, taskId }: { comment: Comment, allComments: Comment[], taskId: string }) => {
+    const { users } = useData();
+    const commentUser = users.find(u => u.id === comment.userId);
+    const replies = allComments.filter(c => c.parentId === comment.id);
+    const [showReplyForm, setShowReplyForm] = useState(false);
+
+    return (
+        <div className="flex flex-col">
+            <div className="flex gap-3">
+                <Avatar className="h-8 w-8">
+                    <AvatarImage src={commentUser?.avatarUrl} />
+                    <AvatarFallback>{commentUser?.name[0]}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm">{commentUser?.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+                        </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{comment.content}</p>
+                    <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => setShowReplyForm(!showReplyForm)}>Reply</Button>
+                </div>
+            </div>
+
+            {showReplyForm && <CommentReplyForm taskId={taskId} parentId={comment.id} onCommentAdded={() => setShowReplyForm(false)} />}
+            
+            {replies.length > 0 && (
+                <div className="pl-11 mt-4 space-y-4 border-l-2 border-border/50 ml-4">
+                    {replies.map(reply => (
+                        <div key={reply.id} className="pl-4">
+                           <CommentThread comment={reply} allComments={allComments} taskId={taskId}/>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    )
 }
 
 export function TaskDetailsDialog({ taskId, onOpenChange, ...props }: TaskDetailsDialogProps) {
@@ -76,6 +150,8 @@ export function TaskDetailsDialog({ taskId, onOpenChange, ...props }: TaskDetail
   const assignees = users.filter((u) => task.assigneeIds.includes(u.id));
   const canDeleteTask = currentUser.role === 'Admin' || currentUser.id === task.creatorId;
   const canManageAttachments = task.assigneeIds.includes(currentUser.id) || currentUser.role === 'Admin' || currentUser.id === task.creatorId;
+  
+  const rootComments = task.comments.filter(c => !c.parentId);
 
   const handleAddComment = () => {
     if (newComment.trim()) {
@@ -133,7 +209,7 @@ export function TaskDetailsDialog({ taskId, onOpenChange, ...props }: TaskDetail
         <DialogHeader>
           <DialogTitle className="text-2xl">{task.title}</DialogTitle>
           <DialogDescription>
-            In project <span className="font-semibold text-primary">{task.projectId}</span>
+            In project <span className="font-semibold text-primary">{useData().getProjectById(task.projectId)?.name}</span>
           </DialogDescription>
         </DialogHeader>
 
@@ -274,36 +350,19 @@ export function TaskDetailsDialog({ taskId, onOpenChange, ...props }: TaskDetail
               )}
 
               <div className="space-y-4">
-                {task.comments.map(comment => {
-                    const commentUser = users.find(u => u.id === comment.userId);
-                    return (
-                        <div key={comment.id} className="flex gap-3">
-                            <Avatar className="h-8 w-8">
-                                <AvatarImage src={commentUser?.avatarUrl} />
-                                <AvatarFallback>{commentUser?.name[0]}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                    <span className="font-semibold text-sm">{commentUser?.name}</span>
-                                    <span className="text-xs text-muted-foreground">
-                                        {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
-                                    </span>
-                                </div>
-                                <p className="text-sm text-muted-foreground">{comment.content}</p>
-                            </div>
-                        </div>
-                    );
-                })}
+                {rootComments.map(comment => (
+                    <CommentThread key={comment.id} comment={comment} allComments={task.comments} taskId={task.id} />
+                ))}
               </div>
 
-              <div className="mt-4 flex gap-3">
+              <div className="mt-6 flex gap-3">
                  <Avatar className="h-8 w-8">
                     <AvatarImage src={currentUser?.avatarUrl} />
                     <AvatarFallback>{currentUser?.name[0]}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 space-y-2">
                   <Textarea 
-                    placeholder="Add a comment..."
+                    placeholder="Add a new comment..."
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                   />

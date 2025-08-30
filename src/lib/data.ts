@@ -43,6 +43,7 @@ const comments: Comment[] = [
         id: 'comment-2',
         taskId: 'task-1',
         userId: 'user-3',
+        parentId: 'comment-1',
         content: "Agreed. I've uploaded some initial sketches for the homepage. Feedback welcome!",
         createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
     },
@@ -57,6 +58,7 @@ const comments: Comment[] = [
         id: 'comment-4',
         taskId: 'task-1',
         userId: 'user-3',
+        parentId: 'comment-3',
         content: "Good points. I'll make those adjustments. New version coming tomorrow AM.",
         createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
     }
