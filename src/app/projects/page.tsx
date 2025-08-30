@@ -8,11 +8,20 @@ import { Button } from "@/components/ui/button";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { PlusCircle } from "lucide-react";
+import { useMemo } from "react";
 
 export default function ProjectsPage() {
   const { projects } = useData();
   const { user } = useAuth();
   const [isAddProjectDialogOpen, setIsAddProjectDialogOpen] = useState(false);
+
+  const visibleProjects = useMemo(() => {
+    if (!user) return [];
+    if (user.role === 'Admin') {
+      return projects;
+    }
+    return projects.filter(p => p.memberIds.includes(user.id));
+  }, [projects, user]);
 
   return (
     <MainLayout>
@@ -26,7 +35,7 @@ export default function ProjectsPage() {
         )}
       </div>
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {projects.map(project => (
+        {visibleProjects.map(project => (
           <ProjectCard key={project.id} project={project} />
         ))}
       </div>
