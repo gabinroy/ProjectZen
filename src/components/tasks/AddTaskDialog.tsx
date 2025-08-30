@@ -12,14 +12,15 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Calendar as CalendarIcon, Check, ChevronsUpDown } from "lucide-react";
+import { Calendar as CalendarIcon, Check, ChevronsUpDown, Paperclip, X } from "lucide-react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useData } from "@/contexts/DataContext";
 import type { DialogProps } from "@radix-ui/react-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { Task } from "@/lib/types";
+import type { Task, Attachment } from "@/lib/types";
+import { useRef, useState } from "react";
 
 const formSchema = z.object({
   title: z.string().min(3, { message: "Task title must be at least 3 characters." }),
@@ -27,6 +28,7 @@ const formSchema = z.object({
   priority: z.enum(["Low", "Medium", "High"]),
   dueDate: z.date({ required_error: "Due date is required." }),
   assigneeIds: z.array(z.string()).min(1, "At least one assignee is required."),
+  attachments: z.array(z.instanceof(File)).optional(),
 });
 
 interface AddTaskDialogProps extends DialogProps {
@@ -37,6 +39,8 @@ interface AddTaskDialogProps extends DialogProps {
 export function AddTaskDialog({ onOpenChange, projectId, ...props }: AddTaskDialogProps) {
   const { users, getProjectById, addTask } = useData();
   const { toast } = useToast();
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
+  const [attachments, setAttachments] = useState<File[]>([]);
   
   const project = getProjectById(projectId);
   const projectMembers = users.filter(u => project?.memberIds.includes(u.id));
@@ -48,32 +52,60 @@ export function AddTaskDialog({ onOpenChange, projectId, ...props }: AddTaskDial
       description: "",
       priority: "Medium",
       assigneeIds: [],
+      attachments: [],
     },
   });
+  
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      const newFiles = Array.from(event.target.files);
+      setAttachments(prev => [...prev, ...newFiles]);
+      form.setValue('attachments', [...(form.getValues('attachments') || []), ...newFiles]);
+    }
+  };
+  
+  const removeAttachment = (index: number) => {
+    const updatedAttachments = [...attachments];
+    updatedAttachments.splice(index, 1);
+    setAttachments(updatedAttachments);
+    form.setValue('attachments', updatedAttachments);
+  };
+
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    const taskData: Omit<Task, 'id' | 'status' | 'comments' | 'attachments' | 'creatorId'> = {
+    const attachmentData: Attachment[] = (values.attachments || []).map(file => ({
+        id: `attach-${Date.now()}-${Math.random()}`,
+        fileName: file.name,
+        url: URL.createObjectURL(file),
+    }));
+
+    const taskData: Omit<Task, 'id' | 'status' | 'comments' | 'creatorId'> = {
         projectId,
         title: values.title,
         description: values.description || "",
         priority: values.priority,
         dueDate: values.dueDate.toISOString(),
         assigneeIds: values.assigneeIds,
+        attachments: attachmentData
     }
     
-    addTask(taskData);
+    addTask(taskData as Omit<Task, 'id' | 'status' | 'comments' | 'creatorId'>);
 
     toast({
         title: "Task Created",
         description: `Task "${values.title}" has been created successfully.`,
     })
     form.reset();
+    setAttachments([]);
     onOpenChange(false);
   }
 
   return (
     <Dialog onOpenChange={(isOpen) => {
-        if (!isOpen) form.reset();
+        if (!isOpen) {
+            form.reset();
+            setAttachments([]);
+        }
         onOpenChange(isOpen);
     }} {...props}>
       <DialogContent>
@@ -235,7 +267,29 @@ export function AddTaskDialog({ onOpenChange, projectId, ...props }: AddTaskDial
                 </FormItem>
               )}
             />
-            {/* Attachments field will be handled in TaskDetailsDialog for simplicity */}
+            
+            <FormItem>
+                <FormLabel>Attachments</FormLabel>
+                <FormControl>
+                    <Button type="button" variant="outline" className="w-full" onClick={() => attachmentInputRef.current?.click()}>
+                        <Paperclip className="mr-2 h-4 w-4"/>
+                        Add Files
+                    </Button>
+                </FormControl>
+                <Input type="file" multiple ref={attachmentInputRef} className="hidden" onChange={handleFileChange} />
+                <div className="space-y-2 pt-2">
+                    {attachments.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between text-sm p-2 rounded-md bg-secondary">
+                            <span className="truncate">{file.name}</span>
+                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeAttachment(index)}>
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+                 <FormMessage />
+            </FormItem>
+            
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button type="submit">Create Task</Button>

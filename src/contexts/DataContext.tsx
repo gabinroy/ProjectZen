@@ -23,7 +23,7 @@ interface DataContextType {
   deleteProject: (projectId: string) => void;
   updateProjectMembers: (projectId: string, memberIds: string[]) => void;
   getProjectById: (projectId: string) => Project | undefined;
-  addTask: (task: Omit<Task, 'id' | 'status' | 'comments' | 'attachments' | 'creatorId'>) => void;
+  addTask: (task: Omit<Task, 'id' | 'status' | 'comments' | 'creatorId'>) => void;
   deleteTask: (taskId: string) => void;
   addAttachment: (taskId: string, file: File) => void;
   deleteAttachment: (taskId: string, attachmentId: string) => void;
@@ -155,14 +155,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     ));
   }, [projects, addNotification]);
 
-  const addTask = useCallback((task: Omit<Task, 'id' | 'status' | 'comments' | 'attachments' | 'creatorId'>) => {
+  const addTask = useCallback((task: Omit<Task, 'id' | 'status' | 'comments' | 'creatorId'>) => {
     if (!currentUser) return;
     const newTask: Task = {
         ...task,
         id: `task-${Date.now()}`,
         status: 'Todo',
         comments: [],
-        attachments: [],
+        attachments: task.attachments || [],
         creatorId: currentUser.id,
     };
     
